@@ -36,12 +36,6 @@ class CancerPOMDP:
             and disutils associated with a mammogram that occurs
             in that time interval.
         '''
-
-        # if positive mammography and patient has cancer, then lump sum
-        if obs == 1 and (state == 1 or state == 2):
-            # return 0 or lump sum here...
-            return 0
-
         deathRate = self.transProb(time, state, 5)
         reward = 0.5 * (1 - deathRate) + 0.25 * deathRate
         # if mamography, then subtract disutility of performing mammography
@@ -65,35 +59,42 @@ class CancerPOMDP:
                 # true positive mammography, 2 weeks du
                 return 2.0 / 52
 
+    def lumpSumReward(self, time, state):
+        '''
+            Lump sum reward at time, given state (either in situ or invasive)
+            Decision process ends after receiving this lump sum reward and it
+            should represent expected QUALYs given being in treatment for in situ
+            or invasive cancer
+        '''
+        if state == 1:
+            return 19
+        if state == 2:
+            return 10
+
     def transProb(self, time, state, newState):
         '''
-            Probability of transitioning from state to newState at
-            time t.
+            Return probability of transitioning from state to newState at
+            time t
         '''
         return 0.5
 
     def obsProb(self, time, state, obs):
         '''
-            Return observation probabilities as
+            Return observation probability given state as
             given by specificity and sensitivity rates from paper.
         '''
 
-        # if cancer-free then use specificty, otherwise use sensitivity
+        # if cancer-free then use specificity, otherwise use sensitivity
         stat = "spec" if state == 0 else "sens"
 
         # determine ageGroup
-        if time < 20:
-            ageGroup = 0
-        elif time < 30:
-            ageGroup = 1
-        elif time < 40:
-            ageGroup = 2
-        elif time < 60:
-            ageGroup = 3
-        else:
-            ageGroup = 4
+        ageGroups = [20, 30, 40, 60, self.tmax+1]
+        for group, ageUpper in enumerate(ageGroups):
+            if time < ageUpper:
+                ageGroup = group
+                break
 
-        # return probability
+        # return probability of observation | state
         if obs == 0:
             return MStats[ageGroup][stat]
         if obs == 1:
