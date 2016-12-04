@@ -1,5 +1,4 @@
-from stats import SDStats, MStats
-
+from stats import SDStats, MStats, TMatrix
 
 class CancerPOMDP:
 
@@ -46,20 +45,20 @@ class CancerPOMDP:
         return reward
 
     def __disutil(self, obs, state):
-            '''
-                Disutilities of mamography based on resulting observation
-                and underlying disease state
-            '''
-            # negative mammography, 0.5 days du
-            if obs == 0:
-                return 0.5 / 365
-            if obs == 1:
-                # false positive mammography, 4 weeks du
-                if state == 0:
-                    # 4 weeks
-                    return 4.0 / 52
-                # true positive mammography, 2 weeks du
-                return 2.0 / 52
+        '''
+            Disutilities of mamography based on resulting observation
+            and underlying disease state
+        '''
+        # negative mammography, 0.5 days du
+        if obs == 0:
+            return 0.5 / 365
+        if obs == 1:
+            # false positive mammography, 4 weeks du
+            if state == 0:
+                # 4 weeks
+                return 4.0 / 52
+            # true positive mammography, 2 weeks du
+            return 2.0 / 52
 
     def lumpSumReward(self, time, state):
         '''
@@ -68,17 +67,34 @@ class CancerPOMDP:
             should represent expected QUALYs given being in treatment for in situ
             or invasive cancer.
         '''
+
+        def lumpSum(t, decayRate, laterDecay):
+            numPeople = 100000
+
+            initPeople = numPeople
+            yearsTotal = 0
+            for i in xrange(t, 121):
+                if i > 10:
+                    decayRate = laterDecay
+                numDied = decayRate * numPeople
+                # find number of people that lived the full 6 mos
+                yearsTotal += .5 * (numPeople - numDied) + .25 * (numDied)
+                numPeople -= numDied
+
+            return yearsTotal / float(initPeople)
+
         if state == 1:
-            return 19
+            return lumpSum(time, .004, .004)
         if state == 2:
-            return 10
+            return lumpSum(time, .008, .006)
+
 
     def transProb(self, time, state, newState):
         '''
             Return probability of transitioning from state to newState at
             time t
         '''
-        return 0.5
+        return TMatrix[state][newState]
 
     def obsProb(self, time, state, obs):
         '''
@@ -90,7 +106,7 @@ class CancerPOMDP:
         stat = "spec" if state == 0 else "sens"
 
         # determine ageGroup
-        ageGroups = [20, 30, 40, 60, self.tmax+1]
+        ageGroups = [20, 30, 40, 60, self.tmax + 1]
         for group, ageUpper in enumerate(ageGroups):
             if time < ageUpper:
                 ageGroup = group
