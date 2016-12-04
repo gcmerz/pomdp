@@ -20,8 +20,10 @@ class CancerPOMDP:
         '''
 
         self.S = range(6)
+        # partially observable states (0, 1, 2)
+        self.SPO = range(3)
         self.A = range(2)
-        self.O = range(4)
+        self.O = {1: [0, 1], 0: [2, 3]}
 
         # initial risks given
         self.b0 = b0
@@ -64,7 +66,7 @@ class CancerPOMDP:
             Lump sum reward at time, given state (either in situ or invasive)
             Decision process ends after receiving this lump sum reward and it
             should represent expected QUALYs given being in treatment for in situ
-            or invasive cancer
+            or invasive cancer.
         '''
         if state == 1:
             return 19
