@@ -59,21 +59,26 @@ class MonahanSolve(CancerPOMDP):
         # alpha vectors
         perms = itertools.product(
             self.alpha[self.time + 1], self.alpha[self.time + 1])
+        totalWAlpha = len(self.alpha[self.time + 1])**2
+        totalMAlpha = len(self.alpha[self.time + 1])
+        totalAlpha = totalWAlpha + totalMAlpha
         self.alpha[self.time] = np.array(
-            [(i % 2, np.array([0 for _ in self.SPO]))
-             for i in xrange(2 * len(self.alpha[self.time + 1])**2)], dtype=tuple)
+            [(-1, np.array([0 for _ in self.SPO]))
+             for i in xrange(totalAlpha)], dtype=tuple)
 
         i = 0
         for alpha1, alpha2 in perms:
             # alphas for the  next step each associated with an observation
             futureAlphas = {2: alpha1[1], 3: alpha2[1]}
             self.alpha[self.time][i] = (0, self.generateWAlpha(futureAlphas))
+            i += 1
+
+        for alpha in self.alpha[self.time + 1]:
             # alphas for the  next step each associated with an observation
-            futureAlphas = {0: alpha1[1], 1: alpha2[1],
-                            "max": alphaMaxValue}
+            futureAlphas = {0: alpha[1], "max": alphaMaxValue}
             self.alpha[self.time][
-                i + 1] = (1, self.generateMAlpha(futureAlphas))
-            i += 2
+                i] = (1, self.generateMAlpha(futureAlphas))
+            i += 1
 
     def generateWAlpha(self, futureAlphas):
         # initialize alpha as vector of partially observable states
