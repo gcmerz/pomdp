@@ -18,51 +18,37 @@ class MonahanSolve(CancerPOMDP):
 
     def solve(self):
         while self.time >= self.t0:
-
             # generate all alpha
             start = time.time()
             self.generateAllAlpha()
             end = time.time()
-            print "Total alpha enumerated: ", len(self.alpha[self.time]), ", time: ", "{:.2f}".format(end - start)
+            self.printReport("enumeration", start, end)
 
             # prune dominated alpha
             start = time.time()
             self.eagleReduction()
             end = time.time()
-            print "Total alpha after Eagle: ", len(self.alpha[self.time]), ", time: ", "{:.2f}".format(end - start)
+            self.printReport("Eagle", start, end)
 
             # use LP to prune
             start = time.time()
             self.monahanElimination()
             end = time.time()
-            print "Total alpha after LP: ", len(self.alpha[self.time]), ", time: ", "{:.2f}".format(end - start)
+            self.printReport("LP", start, end)
+
             print "Completed time step ", self.time, "\n"
             self.time -= 1
 
+    def printReport(self, s, start, end):
+        out = "Total alpha after " + s + ": "
+        out += str(len(self.alpha[self.time]))
+        out += ", time: "
+        out += "{:.2f}".format(end - start)
+        print out
 
-    def eagleReduction(self):
-        def dominates(alpha, alphaOther):
-            return np.greater_equal(alpha, alphaOther).all()
-
-        alphas = self.alpha[self.time]
-        marked = np.ones(alphas.shape[0]).astype(bool)
-        for i in xrange(len(alphas)):
-            if marked[i]:
-                for j in xrange(i+1, len(alphas)):
-                    if dominates(alphas[j][1], alphas[i][1]):
-                        marked[i] = False
-                        break
-                    elif dominates(alphas[i][1], alphas[j][1]):
-                        marked[j] = False
-        self.alpha[self.time] = alphas[marked]
-
-    def monahanElimination(self):
-        alphas = np.array([val for _, val in self.alpha[self.time]])
-        marked = np.ones(alphas.shape[0]).astype(bool)
-        if len(self.alpha[self.time]) == 1:
-            return
-        for i in xrange(0, len(alphas)):
-            marked[i] = self.pruneLP(alphas[i], alphas)
+    ##############################################################
+        # Alpha Generating Steps #
+    ##############################################################
 
     def generateAllAlpha(self):
         # find alpha to use to get maximal value if false positive mammogram
@@ -104,33 +90,66 @@ class MonahanSolve(CancerPOMDP):
                 alpha[s] += value
         return alpha
 
-    def bestFalsePosAlpha(self):
-        alphaMaxValue = None
-        for _, alpha in self.alpha[self.time + 1]:
-            value = sum([self.transProb(self.time, 0, newS)
-                         * alpha[newS] for newS in self.SPO])
-            if not alphaMaxValue or value > alphaMaxValue:
-                alphaMaxValue = value
-        return alphaMaxValue
-
     def generateMAlpha(self, futureAlphas):
          # initialize alpha as vector of partially observable states
         alpha = [0 for _ in self.SPO]
         # compute alpha vector for each state
         for s in self.SPO:
             for o in self.O[1]:
-                # if false positive, then know you do not have cancer, so know
-                # next belief state and can choose maximal alpha
-                if o == 1 and s == 0:
-                    alpha[s] += futureAlphas["max"]
+                if o == 1:
+                    # if false positive, then know you do not have cancer, so know
+                    # next belief state and can choose maximal alpha
+                    if s == 0:
+                        futureValue = futureAlphas["max"]
+                    else:
+                        # future reward is lump sum
+                        futureValue = self.lumpSumReward(self.time + 1, s + 2)
                 # otherwise, use usual update
                 else:
                     futureValue = sum([self.transProb(
                         self.time, s, newS) * futureAlphas[o][newS] for newS in self.SPO])
-                    value = self.obsProb(
-                        self.time, s, o) * (self.reward(self.time, s, 1, o) + futureValue)
-                    alpha[s] += value
+                # update alpha with obsProb*(reward + futureValue)
+                value = self.obsProb(
+                    self.time, s, o) * (self.reward(self.time, s, 1, o) + futureValue)
+                alpha[s] += value
         return alpha
+
+    def bestFalsePosAlpha(self):
+        alphaMaxValue = None
+        for _, alpha in self.alpha[self.time + 1]:
+            value = sum([self.transProb(self.time, 1, newS)
+                         * alpha[newS] for newS in self.SPO])
+            if not alphaMaxValue or value > alphaMaxValue:
+                alphaMaxValue = value
+        return alphaMaxValue
+
+    ##############################################################
+        # Pruning Steps #
+    ##############################################################
+
+    def eagleReduction(self):
+        def dominates(alpha, alphaOther):
+            return np.greater_equal(alpha, alphaOther).all()
+
+        alphas = self.alpha[self.time]
+        marked = np.ones(alphas.shape[0]).astype(bool)
+        for i in xrange(len(alphas)):
+            if marked[i]:
+                for j in xrange(i + 1, len(alphas)):
+                    if dominates(alphas[j][1], alphas[i][1]):
+                        marked[i] = False
+                        break
+                    elif dominates(alphas[i][1], alphas[j][1]):
+                        marked[j] = False
+        self.alpha[self.time] = alphas[marked]
+
+    def monahanElimination(self):
+        alphas = np.array([val for _, val in self.alpha[self.time]])
+        marked = np.ones(alphas.shape[0]).astype(bool)
+        if len(self.alpha[self.time]) == 1:
+            return
+        for i in xrange(0, len(alphas)):
+            marked[i] = self.pruneLP(alphas[i], alphas)
 
     def pruneLP(self, alpha, otherAlpha, printOut=False):
         # problem is a maximization problem

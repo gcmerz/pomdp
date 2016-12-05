@@ -81,7 +81,7 @@ class CancerPOMDP(object):
 
             initPeople = numPeople
             yearsTotal = 0
-            for i in xrange(t, self.tmax + 1):
+            for i in xrange(t, self.tmax):
                 if i > 10:
                     decayRate = laterDecay
                 numDied = decayRate * numPeople
@@ -92,11 +92,11 @@ class CancerPOMDP(object):
             return yearsTotal / float(initPeople)
 
         if state == 0:
-            return lumpSum(time, .004, .004)
+            return lumpSum(time, .004, .004) + self.terminalReward(state)
         if state == 3:
-            return lumpSum(time, .004, .004)
+            return lumpSum(time, .004, .004) + self.terminalReward(state)
         if state == 4:
-            return lumpSum(time, .008, .006)
+            return lumpSum(time, .008, .006) + self.terminalReward(state)
 
 
     def transProb(self, time, state, newState):
