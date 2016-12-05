@@ -47,9 +47,9 @@ class MonahanSolve(CancerPOMDP):
             self.constructTime = 0
             self.monahanElimination()
             end = time.time()
-            print "LP construct time: ", self.constructTime
-            print "LP solve time: ", self.solveTime
             self.printReport("LP", start, end)
+            print "\tLP construct time: ", self.constructTime
+            print "\tLP solve time: ", self.solveTime
 
             print "Completed time step ", self.time, "\n"
             self.time -= 1
