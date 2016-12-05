@@ -2,6 +2,7 @@ import itertools
 import numpy as np
 import pulp
 from model import CancerPOMDP
+import time
 
 
 class MonahanSolve(CancerPOMDP):
@@ -17,16 +18,27 @@ class MonahanSolve(CancerPOMDP):
 
     def solve(self):
         while self.time >= self.t0:
+
             # generate all alpha
+            start = time.time()
             self.generateAllAlpha()
-            print "Total alpha all: ", len(self.alpha[self.time])
+            end = time.time()
+            print "Total alpha enumerated: ", len(self.alpha[self.time]), ", time: ", "{:.2f}".format(end - start)
+
             # prune dominated alpha
+            start = time.time()
             self.eagleReduction()
-            print "Total alpha after Eagle: ", len(self.alpha[self.time])
+            end = time.time()
+            print "Total alpha after Eagle: ", len(self.alpha[self.time]), ", time: ", "{:.2f}".format(end - start)
+
             # use LP to prune
+            start = time.time()
             self.monahanElimination()
-            print "Completed time step {0}, generated {1} alpha vectors".format(self.time, len(self.alpha[self.time]))
+            end = time.time()
+            print "Total alpha after LP: ", len(self.alpha[self.time]), ", time: ", "{:.2f}".format(end - start)
+            print "Completed time step ", self.time, "\n"
             self.time -= 1
+
 
     def eagleReduction(self):
         def dominates(alpha, alphaOther):
@@ -35,12 +47,13 @@ class MonahanSolve(CancerPOMDP):
         alphas = self.alpha[self.time]
         marked = np.ones(alphas.shape[0]).astype(bool)
         for i in xrange(len(alphas)):
-            for j in xrange(i+1, len(alphas)):
-                if dominates(alphas[j][1], alphas[i][1]):
-                    marked[i] = False
-                    break
-                elif dominates(alphas[i][1], alphas[j][1]):
-                    marked[j] = False
+            if marked[i]:
+                for j in xrange(i+1, len(alphas)):
+                    if dominates(alphas[j][1], alphas[i][1]):
+                        marked[i] = False
+                        break
+                    elif dominates(alphas[i][1], alphas[j][1]):
+                        marked[j] = False
         self.alpha[self.time] = alphas[marked]
 
     def monahanElimination(self):
@@ -115,7 +128,7 @@ class MonahanSolve(CancerPOMDP):
                     futureValue = sum([self.transProb(
                         self.time, s, newS) * futureAlphas[o][newS] for newS in self.SPO])
                     value = self.obsProb(
-                        self.time, s, o) * (self.reward(self.time, s, 0, o) + futureValue)
+                        self.time, s, o) * (self.reward(self.time, s, 1, o) + futureValue)
                     alpha[s] += value
         return alpha
 
