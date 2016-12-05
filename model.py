@@ -1,8 +1,8 @@
 from stats import SDStats, MStats, TMatrix
 
-class CancerPOMDP:
+class CancerPOMDP(object):
 
-    def __init__(self, b0=[1, 0, 0], t0=0):
+    def __init__(self, b0=[1, 0, 0], t0=0, tmax=120):
         '''
         States (S):
             0-5 as described in paper
@@ -28,7 +28,15 @@ class CancerPOMDP:
         self.b0 = b0
         # initial age given
         self.t0 = t0
-        self.tmax = 120
+        # age to end at
+        self.tmax = tmax
+
+    def terminalReward(self, state):
+        '''
+            Reward received for being in state at 
+            last time step in model.
+        '''
+        return 0
 
     def reward(self, time, state, action, obs):
         '''
@@ -73,7 +81,7 @@ class CancerPOMDP:
 
             initPeople = numPeople
             yearsTotal = 0
-            for i in xrange(t, 121):
+            for i in xrange(t, self.tmax + 1):
                 if i > 10:
                     decayRate = laterDecay
                 numDied = decayRate * numPeople
@@ -83,9 +91,11 @@ class CancerPOMDP:
 
             return yearsTotal / float(initPeople)
 
-        if state == 1:
+        if state == 0:
             return lumpSum(time, .004, .004)
-        if state == 2:
+        if state == 3:
+            return lumpSum(time, .004, .004)
+        if state == 4:
             return lumpSum(time, .008, .006)
 
 
