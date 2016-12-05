@@ -178,8 +178,10 @@ class MonahanSolve(CancerPOMDP):
         self.alpha[self.time] = self.alpha[self.time][marked]
 
     def pruneLP(self, i, alphas, marked, printOut=False):
+        # set up variables
         sigma = variable()
         pi = variable(3)
+
         start = time.time()
         c1 = ( sum(pi) == 1 )
         c2 = ( pi >= 0 )
@@ -199,48 +201,7 @@ class MonahanSolve(CancerPOMDP):
         end = time.time()
         self.solveTime += (end - start)
 
-        # print obj
-
-        # # alpha to check if prune
-        # alpha = alphas[i]
-        # start = time.time()
-        # # problem is a maximization problem
-        # prob = pulp.LpProblem("Reduce", pulp.LpMaximize)
-        # # set up arbitrary probability distribution over state pi
-        # pi = np.array([pulp.LpVariable("pi" + str(s), lowBound=0)
-        #                for s in range(3)])
-        # # set up sigma
-        # sigma = pulp.LpVariable("sigma", lowBound=None, upBound=None)
-        # # Objective: max sigma
-        # prob += sigma, "Maximize sigma"
-        # # The pi must sum to 1
-        # prob += pulp.lpSum(pi) == 1, "ProbDistribution"
-        # # Check if this alpha vector does better than any other alpha vector
-        # for j, a in enumerate(alphas):
-        #     if i != j and marked[j]:
-        #         prob += np.dot(alpha - a, pi) - sigma >= 0, ""
-        # end = time.time()
-        # self.constructTime += (end - start)
-
-        # start = time.time()
-        # prob.solve()
-        # end = time.time()
-        # self.solveTime += (end - start)
-
-        # obj = pulp.value(prob.objective)
-        # if printOut:
-        #     print "Problem: ", prob
-        #     print "Objective (sigma): ", obj
-        #     print "Pi: ", [p.value() for p in pi]
-        # # return True if should not prune, False if should prune
-        # print a
-        # c = matrix([-1.0, 0.0, 0.0, 0.0])
-        # b = matrix(np.zeros((1, len(aVals))))
-        # print "A", A
-        # print "b", b
-        # print "c", c
-        # sol = solvers.lp(c, A, b)
-        return obj <= 0
+        return obj < 0
 
     ##############################################################
         # Making decisions based on alpha vectors #
