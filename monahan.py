@@ -1,11 +1,17 @@
 import itertools
 import time
+from collections import deque
 
 import numpy as np
 import pulp
 
+from cvxopt.modeling import variable, op, dot
+from cvxopt import matrix
+import cvxopt
+
 from model import CancerPOMDP
-from modelConstants import *
+from modelConstants import W, M, MNEG, MPOS, SDNEG, SDPOS
+
 
 class MonahanSolve(CancerPOMDP):
 
@@ -163,8 +169,8 @@ class MonahanSolve(CancerPOMDP):
         self.alpha[self.time] = alphas[marked]
 
     def monahanElimination(self):
-        alphas = np.array([val for _, val in self.alpha[self.time]])
-        marked = np.ones(alphas.shape[0]).astype(bool)
+        alphas = np.array([np.array(val) for _, val in self.alpha[self.time]])
+        marked = np.ones(len(alphas)).astype(bool)
         if len(self.alpha[self.time]) == 1:
             return
         for i in xrange(0, len(alphas)):
@@ -172,40 +178,59 @@ class MonahanSolve(CancerPOMDP):
         self.alpha[self.time] = self.alpha[self.time][marked]
 
     def pruneLP(self, i, alphas, marked, printOut=False):
-        # alpha to check if prune
-        alpha = alphas[i]
-        start = time.time()
-        # problem is a maximization problem
-        prob = pulp.LpProblem("Reduce", pulp.LpMaximize)
-        # set up arbitrary probability distribution over state pi
-        pi = np.array([pulp.LpVariable("pi" + str(s), lowBound=0)
-                       for s in range(3)])
-        # set up sigma
-        sigma = pulp.LpVariable("sigma", lowBound=None, upBound=None)
-        # Objective: max sigma
-        prob += sigma, "Maximize sigma"
-        # The pi must sum to 1
-        prob += pulp.lpSum(pi) == 1, "ProbDistribution"
-        # Check if this alpha vector does better than any other alpha vector
-        for j, a in enumerate(alphas):
-            if i != j and marked[j]:
-                prob += np.dot(alpha - a, pi) - sigma >= 0, ""
-        end = time.time()
-        self.constructTime += (end - start)
+        sigma = variable()
+        pi = variable(3)
+        c1 = ( sum(pi) == 1 )
+        c2 = ( pi >= 0 )
+        diffs = matrix(np.array([(alphas[i] - a) for j, a in enumerate(alphas) if marked[j] and j != i]).transpose()) 
+        c3 = ( dot(pi, diffs) - sigma >= 0 )
+        lp = op(-1*sigma, [c1, c2, c3])
+        cvxopt.solvers.options['show_progress'] = False
+        lp.solve()
+        val = lp.objective.value()
+        # obj = val[0]
+        print val
 
-        start = time.time()
-        prob.solve()
-        end = time.time()
-        self.solveTime += (end - start)
+        # # alpha to check if prune
+        # alpha = alphas[i]
+        # start = time.time()
+        # # problem is a maximization problem
+        # prob = pulp.LpProblem("Reduce", pulp.LpMaximize)
+        # # set up arbitrary probability distribution over state pi
+        # pi = np.array([pulp.LpVariable("pi" + str(s), lowBound=0)
+        #                for s in range(3)])
+        # # set up sigma
+        # sigma = pulp.LpVariable("sigma", lowBound=None, upBound=None)
+        # # Objective: max sigma
+        # prob += sigma, "Maximize sigma"
+        # # The pi must sum to 1
+        # prob += pulp.lpSum(pi) == 1, "ProbDistribution"
+        # # Check if this alpha vector does better than any other alpha vector
+        # for j, a in enumerate(alphas):
+        #     if i != j and marked[j]:
+        #         prob += np.dot(alpha - a, pi) - sigma >= 0, ""
+        # end = time.time()
+        # self.constructTime += (end - start)
 
+        # start = time.time()
+        # prob.solve()
+        # end = time.time()
+        # self.solveTime += (end - start)
 
-        obj = pulp.value(prob.objective)
-        if printOut:
-            print "Problem: ", prob
-            print "Objective (sigma): ", obj
-            print "Pi: ", [p.value() for p in pi]
-        # return True if should not prune, False if should prune
-        return obj > 0
+        # obj = pulp.value(prob.objective)
+        # if printOut:
+        #     print "Problem: ", prob
+        #     print "Objective (sigma): ", obj
+        #     print "Pi: ", [p.value() for p in pi]
+        # # return True if should not prune, False if should prune
+        # print a
+        # c = matrix([-1.0, 0.0, 0.0, 0.0])
+        # b = matrix(np.zeros((1, len(aVals))))
+        # print "A", A
+        # print "b", b
+        # print "c", c
+        # sol = solvers.lp(c, A, b)
+        return 1
 
     ##############################################################
         # Making decisions based on alpha vectors #
