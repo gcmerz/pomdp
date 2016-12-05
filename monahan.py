@@ -180,16 +180,26 @@ class MonahanSolve(CancerPOMDP):
     def pruneLP(self, i, alphas, marked, printOut=False):
         sigma = variable()
         pi = variable(3)
+        start = time.time()
         c1 = ( sum(pi) == 1 )
         c2 = ( pi >= 0 )
-        diffs = matrix(np.array([(alphas[i] - a) for j, a in enumerate(alphas) if marked[j] and j != i]).transpose()) 
-        c3 = ( dot(pi, diffs) - sigma >= 0 )
-        lp = op(-1*sigma, [c1, c2, c3])
+        diffs = [matrix(alphas[i] - a) for j, a in enumerate(alphas) if marked[j] and j != i]
+        if len(diffs) == 0:
+            return 1
+        c3 = [( dot(diff, pi) - sigma >= 0 ) for diff in diffs]
+        lp = op(-1*sigma, [c1, c2] + c3)
         cvxopt.solvers.options['show_progress'] = False
+        end = time.time()
+        self.constructTime += (end - start)
+
+        start = time.time()
         lp.solve()
         val = lp.objective.value()
-        # obj = val[0]
-        print val
+        obj = val[0]
+        end = time.time()
+        self.solveTime += (end - start)
+
+        # print obj
 
         # # alpha to check if prune
         # alpha = alphas[i]
@@ -230,7 +240,7 @@ class MonahanSolve(CancerPOMDP):
         # print "b", b
         # print "c", c
         # sol = solvers.lp(c, A, b)
-        return 1
+        return obj <= 0
 
     ##############################################################
         # Making decisions based on alpha vectors #
