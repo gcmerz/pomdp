@@ -1,8 +1,11 @@
 from stats import SDStats, MStats, TMatrix
+import numpy as np
+from modelConstants import W, M, MNEG, MPOS, SDNEG, SDPOS
+
 
 class CancerPOMDP(object):
 
-    def __init__(self, b0=[1, 0, 0], t0=0, tmax=120):
+    def __init__(self, t0=0, tmax=120):
         '''
         States (S):
             0-5 as described in paper
@@ -21,11 +24,9 @@ class CancerPOMDP(object):
         self.S = range(6)
         # partially observable states (0, 1, 2)
         self.SPO = range(3)
-        self.A = range(2)
-        self.O = {1: [0, 1], 0: [2, 3]}
+        self.A = [W, M]
+        self.O = {M: [MNEG, MPOS], W: [SDNEG, SDPOS]}
 
-        # initial risks given
-        self.b0 = b0
         # initial age given
         self.t0 = t0
         # age to end at
@@ -33,7 +34,7 @@ class CancerPOMDP(object):
 
     def terminalReward(self, state):
         '''
-            Reward received for being in state at 
+            Reward received for being in state at
             last time step in model.
         '''
         return 0
@@ -48,7 +49,7 @@ class CancerPOMDP(object):
         deathRate = self.transProb(time, state, 5)
         reward = 0.5 * (1 - deathRate) + 0.25 * deathRate
         # if mamography, then subtract disutility of performing mammography
-        if action == 1:
+        if action == M:
             reward -= self.__disutil(obs, state)
         return reward
 
@@ -58,9 +59,9 @@ class CancerPOMDP(object):
             and underlying disease state
         '''
         # negative mammography, 0.5 days du
-        if obs == 0:
+        if obs == MNEG:
             return 0.5 / 365
-        if obs == 1:
+        if obs == MPOS:
             # false positive mammography, 4 weeks du
             if state == 0:
                 # 4 weeks
@@ -98,7 +99,6 @@ class CancerPOMDP(object):
         if state == 4:
             return lumpSum(time, .008, .006) + self.terminalReward(state)
 
-
     def transProb(self, time, state, newState):
         '''
             Return probability of transitioning from state to newState at
@@ -123,11 +123,28 @@ class CancerPOMDP(object):
                 break
 
         # return probability of observation | state
-        if obs == 0:
+        if obs == MNEG:
             return MStats[ageGroup][stat]
-        if obs == 1:
+        if obs == MPOS:
             return 1 - MStats[ageGroup][stat]
-        if obs == 2:
+        if obs == SDNEG:
             return SDStats[stat]
-        if obs == 3:
+        if obs == SDPOS:
             return 1 - SDStats[stat]
+
+    def updateBeliefState(self, time, b, obs):
+        '''
+            Update belief state given observation and transition probability
+        '''
+
+        # if false positive mammography, then know that you are cancer free
+        if obs == MPOS:
+            return np.array([self.transProb(time, 0, newState) for newState in self.SPO])
+
+        tauS = lambda newState: sum(
+            [b[s] * self.obsProb(time, s, obs) * self.transProb(time, newState, s)
+             for s in self.SPO])
+
+        tau = np.array([tauS(newState) for newState in self.SPO])
+        # return normalized tau
+        return tau / np.sum(tau)
