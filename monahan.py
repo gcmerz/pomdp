@@ -1,13 +1,14 @@
 import itertools
 import time
-import sys
 import os
+import pickle
 
 import numpy as np
 
 from model import CancerPOMDP
 from modelConstants import W, M, MNEG, MPOS, SDNEG, SDPOS
 from pruneLP import pruneLPPulp, pruneLPCplex, pruneLPCvxopt
+
 
 class MonahanSolve(CancerPOMDP):
 
@@ -51,6 +52,14 @@ class MonahanSolve(CancerPOMDP):
             print "\tLP solve time: ", self.solveTime
 
             print "Completed time step ", self.time, "\n"
+
+            # write alpha to file every 5 time steps
+            if self.time % 5 == 0:
+                start = time.time()
+                self.writeAlpha()
+                end = time.time()
+                print "Wrote alpha in {0} secs.\n".format(end - start)
+
             self.time -= 1
 
     def printReport(self, s, start, end):
@@ -198,6 +207,19 @@ class MonahanSolve(CancerPOMDP):
 
     def setLPSolver(self, solver):
         self.LPSolver = solver
+
+    ##############################################################
+        # Saving alpha vectors #
+    ##############################################################
+
+    def writeAlpha(self, fname="alpha/alpha.txt"):
+        with open(fname, "w") as f:
+            pickle.dump(self.alpha, f)
+
+    def readAlpha(self, fname="alpha/alpha.txt"):
+        with open(fname, "r") as f:
+            self.alpha = pickle.load(f)
+        self.time = max(min(self.alpha.keys()) - 1, 0)
 
     ##############################################################
         # Making decisions based on alpha vectors #
