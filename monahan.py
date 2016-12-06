@@ -5,15 +5,9 @@ import os
 
 import numpy as np
 
-# LP Solvers
-import pulp
-from cvxopt.modeling import variable, op, dot
-from cvxopt import matrix
-import cvxopt
-
 from model import CancerPOMDP
 from modelConstants import W, M, MNEG, MPOS, SDNEG, SDPOS
-
+from pruneLP import pruneLPPulp, pruneLPCplex, pruneLPCvxopt
 
 class MonahanSolve(CancerPOMDP):
 
@@ -28,8 +22,11 @@ class MonahanSolve(CancerPOMDP):
 
         self.solveTime = 0
         self.constructTime = 0
+        self.LPSolver = "pulp"
 
     def solve(self):
+        print "Using LP Solver", self.LPSolver, "\n"
+
         while self.time >= self.t0:
             # generate all alpha
             start = time.time()
@@ -176,77 +173,21 @@ class MonahanSolve(CancerPOMDP):
         if len(self.alpha[self.time]) == 1:
             return
         for i in xrange(0, len(alphas)):
-            marked[i] = self.pruneLP(i, alphas, marked)
+            marked[i] = self.pruneLP(i, alphas, marked, self.LPSolver)
         self.alpha[self.time] = self.alpha[self.time][marked]
 
-    def pruneLP(self, i, alphas, marked, solver="cplex"):
+    def pruneLP(self, i, alphas, marked, solver):
         if solver == "cvxopt":
-            self.pruneLPCvxopt(i, alphas, marked)
+            return pruneLPCvxopt(self, i, alphas, marked)
         elif solver == "cplex":
-            self.pruneLPCplex(i, alphas, marked)
+            return pruneLPCplex(self, i, alphas, marked)
+        elif solver == "pulp":
+            return pruneLPPulp(self, i, alphas, marked)
         else:
-            self.pruneLPPulp(i, alphas, marked)
+            raise "Invalid LP solver given"
 
-    def pruneLPCvxopt(self, i, alphas, marked):
-        # set up variables
-        sigma = variable()
-        pi = variable(3)
-
-        start = time.time()
-        # sum to 1 constraint
-        c1 = (sum(pi) == 1)
-        # the pi must be greater than 0
-        c2 = (pi >= 0)
-        # alpha best for some prob distribution
-        c3 = [(dot(matrix(alphas[i] - a), pi) - sigma >= 0)
-              for j, a in enumerate(alphas) if marked[j] and j != i]
-        # if none of these constraints, then LP unbounded so return 1
-        if len(c3) == 0:
-            return 1
-        lp = op(-1 * sigma, [c1, c2] + c3)
-        cvxopt.solvers.options['show_progress'] = False
-        end = time.time()
-        self.constructTime += (end - start)
-
-        start = time.time()
-        lp.solve('dense', 'glpk')
-        obj = sigma.value[0]
-        end = time.time()
-        self.solveTime += (end - start)
-
-        return obj > 0
-
-    def pruneLPCplex(self, i, alphas, marked):
-        start = time.time()
-        self.makeAMPLDataFile(i, alphas, marked)
-        end = time.time()
-        self.constructTime += (end - start)
-
-        start = time.time()
-        os.system('ampl ampl/lp.run')
-        with open("ampl/lpres.txt", "r") as f:
-            obj = float(f.readline())
-        end = time.time()
-        self.solveTime += (end - start)
-
-        return obj > 0
-
-    def pruneLPPulp(self, i, alphas, marked):
-        return 1
-
-    def makeAMPLDataFile(self, i, alphas, marked,
-                         dataFile="ampl/lp.dat", alphaFile="ampl/diff.txt"):
-        diff = np.array([(alphas[i] - a)
-                         for j, a in enumerate(alphas) if marked[j] and j != i])
-
-        dataFileTxt = "param numAlpha := {0};\n".format(len(diff))
-        dataFileTxt += "read {i in alphaI, s in S} diff[i, s] < ampl/diff.txt;\n"
-
-        with open(dataFile, 'w') as df:
-            df.write(dataFileTxt)
-            df.flush()
-
-        np.savetxt(alphaFile, diff, fmt='%.10f')
+    def setLPSolver(self, solver):
+        self.LPSolver = solver
 
     ##############################################################
         # Making decisions based on alpha vectors #

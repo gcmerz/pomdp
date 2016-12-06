@@ -1,0 +1,5 @@
+option solver cplex;
+model ampl/lp.mod;
+data ampl/lp.dat;
+solve;
+print sigma > ampl/lpres.txt;
