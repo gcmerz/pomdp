@@ -1,6 +1,7 @@
 import itertools
 import time
-from collections import deque
+import sys
+import os
 
 import numpy as np
 import pulp
@@ -177,31 +178,61 @@ class MonahanSolve(CancerPOMDP):
             marked[i] = self.pruneLP(i, alphas, marked)
         self.alpha[self.time] = self.alpha[self.time][marked]
 
-    def pruneLP(self, i, alphas, marked, printOut=False):
-        # set up variables
-        sigma = variable()
-        pi = variable(3)
+    def pruneLP(self, i, alphas, marked):
+        # # set up variables
+        # sigma = variable()
+        # pi = variable(3)
 
+        # start = time.time()
+        # # sum to 1 constraint
+        # c1 = (sum(pi) == 1)
+        # # the pi must be greater than 0
+        # c2 = (pi >= 0)
+        # # alpha best for some prob distribution
+        # c3 = [(dot(matrix(alphas[i] - a), pi) - sigma >= 0)
+        #       for j, a in enumerate(alphas) if marked[j] and j != i]
+        # # if none of these constraints, then LP unbounded so return 1
+        # if len(c3) == 0:
+        #     return 1
+        # lp = op(-1 * sigma, [c1, c2] + c3)
+        # cvxopt.solvers.options['show_progress'] = False
+        # end = time.time()
+        # self.constructTime += (end - start)
+
+        # start = time.time()
+        # lp.solve('dense', 'glpk')
+        # obj = sigma.value[0]
+        # end = time.time()
+        # self.solveTime += (end - start)
+
+        # return obj > 0
         start = time.time()
-        c1 = ( sum(pi) == 1 )
-        c2 = ( pi >= 0 )
-        diffs = [matrix(alphas[i] - a) for j, a in enumerate(alphas) if marked[j] and j != i]
-        if len(diffs) == 0:
-            return 1
-        c3 = [( dot(diff, pi) - sigma >= 0 ) for diff in diffs]
-        lp = op(-1*sigma, [c1, c2] + c3)
-        cvxopt.solvers.options['show_progress'] = False
+        self.makeAMPLDataFile(i, alphas, marked)
         end = time.time()
         self.constructTime += (end - start)
 
         start = time.time()
-        lp.solve()
-        val = lp.objective.value()
-        obj = val[0]
+        os.system('ampl ampl/lp.run')
+        with open("ampl/lpres.txt", "r") as f:
+            obj = float(f.readline())
         end = time.time()
         self.solveTime += (end - start)
 
-        return obj < 0
+        return obj > 0
+
+    def makeAMPLDataFile(self, i, alphas, marked,
+                         dataFile="ampl/lp.dat", alphaFile="ampl/diff.txt"):
+        diff = np.array([(alphas[i] - a)
+                         for j, a in enumerate(alphas) if marked[j] and j != i])
+
+        dataFileTxt = "param numAlpha := {0};\n".format(len(diff))
+        dataFileTxt += "read {i in alphaI, s in S} diff[i, s] < ampl/diff.txt;\n"
+
+        with open(dataFile, 'w') as df:
+            df.write(dataFileTxt)
+            df.flush()
+
+        np.savetxt(alphaFile, diff, fmt='%.10f')
 
     ##############################################################
         # Making decisions based on alpha vectors #
