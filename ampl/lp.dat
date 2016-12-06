@@ -1,2 +1,2 @@
-param numAlpha := 244;
+param numAlpha := 103;
 read {i in alphaI, s in S} diff[i, s] < ampl/diff.txt;

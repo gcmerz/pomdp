@@ -1,4 +1,6 @@
 option solver cplex;
+# option cplex_options 'optimality=1e-9';
+
 model ampl/lp.mod;
 data ampl/lp.dat;
 solve;

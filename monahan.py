@@ -183,6 +183,16 @@ class MonahanSolve(CancerPOMDP):
             return pruneLPCplex(self, i, alphas, marked)
         elif solver == "pulp":
             return pruneLPPulp(self, i, alphas, marked)
+        elif solver == "checkAll":
+            o1 = pruneLPCvxopt(self, i, alphas, marked, returnObj=True)
+            o2 = pruneLPCplex(self, i, alphas, marked, returnObj=True)
+            o3 = pruneLPPulp(self, i, alphas, marked, returnObj=True)
+            s1 = o1 > 0
+            s2 = o2 > 0
+            s3 = o3 > 0
+            if s1 != s2 or s2 != s3 or s3 != s1:
+                print "Cvxopt {0}, Cplex {1}, Pulp {2}".format(o1, o2, o3)
+            return s1
         else:
             raise "Invalid LP solver given"
 

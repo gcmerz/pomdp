@@ -9,7 +9,9 @@ from cvxopt.modeling import variable, op, dot
 from cvxopt import matrix
 import cvxopt
 
-def pruneLPCvxopt(glob, i, alphas, marked):
+M = 10**6
+
+def pruneLPCvxopt(glob, i, alphas, marked, returnObj=False):
     # set up variables
     sigma = variable()
     pi = variable(3)
@@ -20,7 +22,7 @@ def pruneLPCvxopt(glob, i, alphas, marked):
     # the pi must be greater than 0
     c2 = (pi >= 0)
     # alpha best for some prob distribution
-    c3 = [(dot(matrix(alphas[i] - a), pi) - sigma >= 0)
+    c3 = [(M*dot(matrix(alphas[i] - a), pi) - sigma >= 0)
           for j, a in enumerate(alphas) if marked[j] and j != i]
     # if none of these constraints, then LP unbounded so return 1
     if len(c3) == 0:
@@ -36,10 +38,13 @@ def pruneLPCvxopt(glob, i, alphas, marked):
     end = time.time()
     glob.solveTime += (end - start)
 
+    if returnObj:
+        return obj
+
     return obj > 0
 
 
-def pruneLPCplex(glob, i, alphas, marked):
+def pruneLPCplex(glob, i, alphas, marked, returnObj=False):
     start = time.time()
     makeAMPLDataFile(i, alphas, marked)
     end = time.time()
@@ -52,11 +57,15 @@ def pruneLPCplex(glob, i, alphas, marked):
     end = time.time()
     glob.solveTime += (end - start)
 
+    if returnObj:
+        return obj
+
     return obj > 0
+
 
 def makeAMPLDataFile(i, alphas, marked,
                      dataFile="ampl/lp.dat", alphaFile="ampl/diff.txt"):
-    diff = np.array([(alphas[i] - a)
+    diff = np.array([M*(alphas[i] - a)
                      for j, a in enumerate(alphas) if marked[j] and j != i])
 
     dataFileTxt = "param numAlpha := {0};\n".format(len(diff))
@@ -69,8 +78,7 @@ def makeAMPLDataFile(i, alphas, marked,
     np.savetxt(alphaFile, diff, fmt='%.10f')
 
 
-
-def pruneLPPulp(glob, i, alphas, marked, printOut=False):
+def pruneLPPulp(glob, i, alphas, marked, printOut=False, returnObj = False):
     # alpha to check if prune
     alpha = alphas[i]
     start = time.time()
@@ -88,7 +96,7 @@ def pruneLPPulp(glob, i, alphas, marked, printOut=False):
     # Check if this alpha vector does better than any other alpha vector
     for j, a in enumerate(alphas):
         if i != j and marked[j]:
-            prob += np.dot(alpha - a, pi) - sigma >= 0, ""
+            prob += M*np.dot(alpha - a, pi) - sigma >= 0, ""
     end = time.time()
     glob.constructTime += (end - start)
 
@@ -102,5 +110,9 @@ def pruneLPPulp(glob, i, alphas, marked, printOut=False):
         print "Problem: ", prob
         print "Objective (sigma): ", obj
         print "Pi: ", [p.value() for p in pi]
+
+    if returnObj:
+        return obj
+    
     # return True if should not prune, False if should prune
     return obj > 0
