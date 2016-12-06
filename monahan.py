@@ -1,11 +1,13 @@
 import itertools
 import time
+import sys
+import os
 
 import numpy as np
-import pulp
 
 from model import CancerPOMDP
-from modelConstants import *
+from modelConstants import W, M, MNEG, MPOS, SDNEG, SDPOS
+from pruneLP import pruneLPPulp, pruneLPCplex, pruneLPCvxopt
 
 class MonahanSolve(CancerPOMDP):
 
@@ -20,8 +22,11 @@ class MonahanSolve(CancerPOMDP):
 
         self.solveTime = 0
         self.constructTime = 0
+        self.LPSolver = "pulp"
 
     def solve(self):
+        print "Using LP Solver", self.LPSolver, "\n"
+
         while self.time >= self.t0:
             # generate all alpha
             start = time.time()
@@ -163,49 +168,26 @@ class MonahanSolve(CancerPOMDP):
         self.alpha[self.time] = alphas[marked]
 
     def monahanElimination(self):
-        alphas = np.array([val for _, val in self.alpha[self.time]])
-        marked = np.ones(alphas.shape[0]).astype(bool)
+        alphas = np.array([np.array(val) for _, val in self.alpha[self.time]])
+        marked = np.ones(len(alphas)).astype(bool)
         if len(self.alpha[self.time]) == 1:
             return
         for i in xrange(0, len(alphas)):
-            marked[i] = self.pruneLP(i, alphas, marked)
+            marked[i] = self.pruneLP(i, alphas, marked, self.LPSolver)
         self.alpha[self.time] = self.alpha[self.time][marked]
 
-    def pruneLP(self, i, alphas, marked, printOut=False):
-        # alpha to check if prune
-        alpha = alphas[i]
-        start = time.time()
-        # problem is a maximization problem
-        prob = pulp.LpProblem("Reduce", pulp.LpMaximize)
-        # set up arbitrary probability distribution over state pi
-        pi = np.array([pulp.LpVariable("pi" + str(s), lowBound=0)
-                       for s in range(3)])
-        # set up sigma
-        sigma = pulp.LpVariable("sigma", lowBound=None, upBound=None)
-        # Objective: max sigma
-        prob += sigma, "Maximize sigma"
-        # The pi must sum to 1
-        prob += pulp.lpSum(pi) == 1, "ProbDistribution"
-        # Check if this alpha vector does better than any other alpha vector
-        for j, a in enumerate(alphas):
-            if i != j and marked[j]:
-                prob += np.dot(alpha - a, pi) - sigma >= 0, ""
-        end = time.time()
-        self.constructTime += (end - start)
+    def pruneLP(self, i, alphas, marked, solver):
+        if solver == "cvxopt":
+            return pruneLPCvxopt(self, i, alphas, marked)
+        elif solver == "cplex":
+            return pruneLPCplex(self, i, alphas, marked)
+        elif solver == "pulp":
+            return pruneLPPulp(self, i, alphas, marked)
+        else:
+            raise "Invalid LP solver given"
 
-        start = time.time()
-        prob.solve()
-        end = time.time()
-        self.solveTime += (end - start)
-
-
-        obj = pulp.value(prob.objective)
-        if printOut:
-            print "Problem: ", prob
-            print "Objective (sigma): ", obj
-            print "Pi: ", [p.value() for p in pi]
-        # return True if should not prune, False if should prune
-        return obj > 0
+    def setLPSolver(self, solver):
+        self.LPSolver = solver
 
     ##############################################################
         # Making decisions based on alpha vectors #
