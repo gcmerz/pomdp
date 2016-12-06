@@ -4,8 +4,9 @@ import sys
 import os
 
 import numpy as np
-import pulp
 
+# LP Solvers
+import pulp
 from cvxopt.modeling import variable, op, dot
 from cvxopt import matrix
 import cvxopt
@@ -178,34 +179,44 @@ class MonahanSolve(CancerPOMDP):
             marked[i] = self.pruneLP(i, alphas, marked)
         self.alpha[self.time] = self.alpha[self.time][marked]
 
-    def pruneLP(self, i, alphas, marked):
-        # # set up variables
-        # sigma = variable()
-        # pi = variable(3)
+    def pruneLP(self, i, alphas, marked, solver="cplex"):
+        if solver == "cvxopt":
+            self.pruneLPCvxopt(i, alphas, marked)
+        elif solver == "cplex":
+            self.pruneLPCplex(i, alphas, marked)
+        else:
+            self.pruneLPPulp(i, alphas, marked)
 
-        # start = time.time()
-        # # sum to 1 constraint
-        # c1 = (sum(pi) == 1)
-        # # the pi must be greater than 0
-        # c2 = (pi >= 0)
-        # # alpha best for some prob distribution
-        # c3 = [(dot(matrix(alphas[i] - a), pi) - sigma >= 0)
-        #       for j, a in enumerate(alphas) if marked[j] and j != i]
-        # # if none of these constraints, then LP unbounded so return 1
-        # if len(c3) == 0:
-        #     return 1
-        # lp = op(-1 * sigma, [c1, c2] + c3)
-        # cvxopt.solvers.options['show_progress'] = False
-        # end = time.time()
-        # self.constructTime += (end - start)
+    def pruneLPCvxopt(self, i, alphas, marked):
+        # set up variables
+        sigma = variable()
+        pi = variable(3)
 
-        # start = time.time()
-        # lp.solve('dense', 'glpk')
-        # obj = sigma.value[0]
-        # end = time.time()
-        # self.solveTime += (end - start)
+        start = time.time()
+        # sum to 1 constraint
+        c1 = (sum(pi) == 1)
+        # the pi must be greater than 0
+        c2 = (pi >= 0)
+        # alpha best for some prob distribution
+        c3 = [(dot(matrix(alphas[i] - a), pi) - sigma >= 0)
+              for j, a in enumerate(alphas) if marked[j] and j != i]
+        # if none of these constraints, then LP unbounded so return 1
+        if len(c3) == 0:
+            return 1
+        lp = op(-1 * sigma, [c1, c2] + c3)
+        cvxopt.solvers.options['show_progress'] = False
+        end = time.time()
+        self.constructTime += (end - start)
 
-        # return obj > 0
+        start = time.time()
+        lp.solve('dense', 'glpk')
+        obj = sigma.value[0]
+        end = time.time()
+        self.solveTime += (end - start)
+
+        return obj > 0
+
+    def pruneLPCplex(self, i, alphas, marked):
         start = time.time()
         self.makeAMPLDataFile(i, alphas, marked)
         end = time.time()
@@ -219,6 +230,9 @@ class MonahanSolve(CancerPOMDP):
         self.solveTime += (end - start)
 
         return obj > 0
+
+    def pruneLPPulp(self, i, alphas, marked):
+        return 1
 
     def makeAMPLDataFile(self, i, alphas, marked,
                          dataFile="ampl/lp.dat", alphaFile="ampl/diff.txt"):
