@@ -161,15 +161,15 @@ class MonahanSolve(CancerPOMDP):
     ##############################################################
 
     def eagleReduction(self):
-        M = 1000000
+        M = 10000
         alphas = np.array([M * np.array(val)
                            for _, val in self.alpha[self.time]])
         marked = np.ones(alphas.shape[0], dtype=bool)
         for i, c in enumerate(alphas):
             if marked[i]:
-                # Preserve non-dominated parts
-                marked[marked] = np.logical_or(
-                    np.any(alphas[marked] > c, axis=1), np.all(alphas[marked] >= c, axis=1))
+                # Keep non-dominated vectors as marked
+                marked[marked] = np.any(alphas[marked] > c, axis=1)
+                marked[i] = True
 
         self.alpha[self.time] = self.alpha[self.time][marked]
 
