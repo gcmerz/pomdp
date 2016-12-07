@@ -181,6 +181,7 @@ class MonahanSolve(CancerPOMDP):
 
         for i in xrange(0, len(alphas)):
             marked[i] = self.pruneLP(i, alphas, marked, self.LPSolver)
+
         self.alpha[self.time] = self.alpha[self.time][marked]
 
     def pruneLP(self, i, alphas, marked, solver):
