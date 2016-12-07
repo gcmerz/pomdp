@@ -1,2 +1,0 @@
-param numAlpha := 3542;
-read {i in alphaI, s in S} diff[i, s] < ampl/diff.txt;
