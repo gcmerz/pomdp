@@ -1,7 +1,8 @@
 option solver cplex;
-# option cplex_options 'optimality=1e-9';
+option cplex_options 'outlev=0';
+option solver_msg 0; 
 
 model ampl/lp.mod;
 data ampl/lp.dat;
-solve;
+solve > /dev/null;
 print sigma > ampl/lpres.txt;

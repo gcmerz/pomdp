@@ -25,7 +25,7 @@ class MonahanSolve(CancerPOMDP):
         self.constructTime = 0
         self.LPSolver = "pulp"
 
-    def solve(self):
+    def solve(self, write=False):
         print "Using LP Solver", self.LPSolver, "\n"
 
         while self.time >= self.t0:
@@ -53,12 +53,13 @@ class MonahanSolve(CancerPOMDP):
 
             print "Completed time step ", self.time, "\n"
 
-            # write alpha to file every 5 time steps
-            if self.time % 5 == 0:
-                start = time.time()
-                self.writeAlpha()
-                end = time.time()
-                print "Wrote alpha in {0} secs.\n".format(end - start)
+            if write:
+                # write alpha to file every 5 time steps
+                if (self.tmax - self.time) % 5 == 0:
+                    start = time.time()
+                    self.writeAlpha()
+                    end = time.time()
+                    print "Wrote alpha in {0} secs.\n".format(end - start)
 
             self.time -= 1
 
@@ -160,27 +161,24 @@ class MonahanSolve(CancerPOMDP):
     ##############################################################
 
     def eagleReduction(self):
-        def dominates(alpha, alphaOther):
-            return np.greater_equal(alpha, alphaOther).all()
-
-        alphas = self.alpha[self.time]
-        marked = np.ones(alphas.shape[0]).astype(bool)
-        for i in xrange(len(alphas)):
+        M = 1000000
+        alphas = np.array([M * np.array(val)
+                           for _, val in self.alpha[self.time]])
+        marked = np.ones(alphas.shape[0], dtype=bool)
+        for i, c in enumerate(alphas):
             if marked[i]:
-                for j in xrange(i + 1, len(alphas)):
-                    if marked[j]:
-                        if dominates(alphas[j][1], alphas[i][1]):
-                            marked[i] = False
-                            break
-                        elif dominates(alphas[i][1], alphas[j][1]):
-                            marked[j] = False
-        self.alpha[self.time] = alphas[marked]
+                # Preserve non-dominated parts
+                marked[marked] = np.logical_or(
+                    np.any(alphas[marked] > c, axis=1), np.all(alphas[marked] >= c, axis=1))
+
+        self.alpha[self.time] = self.alpha[self.time][marked]
 
     def monahanElimination(self):
-        alphas = np.array([np.array(val) for _, val in self.alpha[self.time]])
-        marked = np.ones(len(alphas)).astype(bool)
         if len(self.alpha[self.time]) == 1:
             return
+        alphas = np.array([np.array(val) for _, val in self.alpha[self.time]])
+        marked = np.ones(len(alphas)).astype(bool)
+
         for i in xrange(0, len(alphas)):
             marked[i] = self.pruneLP(i, alphas, marked, self.LPSolver)
         self.alpha[self.time] = self.alpha[self.time][marked]
