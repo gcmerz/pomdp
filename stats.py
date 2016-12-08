@@ -38,6 +38,15 @@ MStats = {
 }
 
 # Transition Probabilities
+# matrix structure:
+#               healthy, in-situ, invasive, post-in-situ, post-invasive, death
+# healthy
+# in-situ
+# invasive
+# post-in-situ
+# post-invasive
+# death
+
 TMatrix = [
     [.993, .001, .002, 0, 0, .004],
     [0, .416, .58, 0, 0, .004],
