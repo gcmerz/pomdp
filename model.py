@@ -83,6 +83,8 @@ class CancerPOMDP(object):
             initPeople = numPeople
             yearsTotal = 0
             for i in xrange(t, self.tmax):
+                # update decay rate after first 5 years to reflect changes
+                # in probability of death
                 if i > 10:
                     decayRate = laterDecay
                 numDied = decayRate * numPeople
@@ -95,7 +97,10 @@ class CancerPOMDP(object):
         if state == 0:
             return lumpSum(time, .004, .004) + self.terminalReward(state)
         if state == 3:
+        # death rate for in-situ cancer same as cancer-free
             return lumpSum(time, .004, .004) + self.terminalReward(state)
+        # once you have survived five years with invasive cancer,
+        # your probability of dying decreases
         if state == 4:
             return lumpSum(time, .008, .006) + self.terminalReward(state)
 
