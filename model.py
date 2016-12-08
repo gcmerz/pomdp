@@ -104,6 +104,36 @@ class CancerPOMDP(object):
         if state == 4:
             return lumpSum(time, .008, .006) + self.terminalReward(state)
 
+    def setupTMatrix(self, time):
+        transmatrix = TMatrix
+        # determine age
+        age = self.t0 + 2 * time
+        # subtract 1 if on last timestep so probabilities work out
+        if age == 100:
+            age -= 1
+        # mortality rates given for 5 year intervals
+        ageIndex5Year = (age - 40) / 5
+        # incidence probabilities given for 10 year intervals
+        ageIndex10Year = (age - 40) / 10
+
+        transMatrix = TMatrix
+        # set healthy -> death prob
+        transMatrix[0][5] = death_probs[ageIndex5Year]
+
+        # set in-situ -> death prob
+        transMatrix[1][5] = death_probs[ageIndex5Year]
+
+        # set healthy -> invasive prob
+        transmatrix[0][3] = death_probs[ageIndex10Year]
+
+        # set healthy -> healthy prob
+        transMatrix[0][0] = 1 - transMatrix[0][1] - transMatrix[0][2] - transMatrix[0][5]
+
+        # set in-situ -> in-situ prob
+        transMatrix[1][1] = 1 - transMatrix[1][2] - transMatrix[1][5]
+
+        return transMatrix
+
     def transProb(self, time, state, newState):
         '''
             Return probability of transitioning from state to newState at
