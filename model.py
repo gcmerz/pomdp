@@ -139,7 +139,7 @@ class CancerPOMDP(object):
             Return probability of transitioning from state to newState at
             time t
         '''
-        return TMatrix[state][newState]
+        return setupTMatrix[state][newState]
 
     def obsProb(self, time, state, obs):
         '''
