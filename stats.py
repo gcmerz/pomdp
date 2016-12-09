@@ -57,19 +57,20 @@ MStats = {
 # -1's denote probabilities that are age-specific
 
 TMatrix = [
-[-1, .001, -1, 0, 0, -1],
-[0, -1, .58, 0, 0, -1],
-[0, 0, .9, 0, 0, .1],
-[0, 0, 0, 1, 0, 0],
-[0, 0, 0, 0, 1, 0],
-[0, 0, 0, 0, 0, 1]
+    [-1, .001, -1, 0, 0, -1],
+    [0, -1, .58, 0, 0, -1],
+    [0, 0, .9, 0, 0, .1],
+    [0, 0, 0, 1, 0, 0],
+    [0, 0, 0, 0, 1, 0],
+    [0, 0, 0, 0, 0, 1]
 ]
 
 # Healthy -> death / In-situ -> death probabilities
 # http://www.cdc.gov/nchs/data/nvsr/nvsr65/nvsr65_08.pdf
 # data provided for every five years from ages 40 to 100; assume uniform and
 # divide by 10 to get probability for each timestep
-death_probs_from_lit = [.009868, 0.015637, 0.024290, 0.035348, 0.049706, 0.071703, 0.109255, 0.170906, 0.271119, 0.426073, 0.614941, 0.786733]
+death_probs_from_lit = [.009868, 0.015637, 0.024290, 0.035348, 0.049706,
+                        0.071703, 0.109255, 0.170906, 0.271119, 0.426073, 0.614941, 0.786733]
 death_probs = [dp / 10.0 for dp in death_probs_from_lit]
 
 # Healthy -> invasive probabilities
