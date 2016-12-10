@@ -1,11 +1,12 @@
-from stats import SDStats, MStats, TMatrix, death_probs, healthy_inv_probs
+from stats import SDStats, MStats, TDPMatrix, death_probs, healthy_inv_probs, 
+TMatrix
 import numpy as np
 from modelConstants import W, M, MNEG, MPOS, SDNEG, SDPOS
 
 
 class CancerPOMDP(object):
 
-    def __init__(self, t0=0, tmax=120):
+    def __init__(self, t0=0, tmax=120, timeDepProbs = False):
         '''
         States (S):
             0-5 as described in paper
@@ -26,7 +27,8 @@ class CancerPOMDP(object):
         self.SPO = range(3)
         self.A = [W, M]
         self.O = {M: [MNEG, MPOS], W: [SDNEG, SDPOS]}
-
+        # if we want time dependent transition probabilities
+        self.tdp= timeDepProbs
         # initial age given
         self.t0 = t0
         # age to end at
@@ -109,7 +111,7 @@ class CancerPOMDP(object):
         if state == 4:
             return lumpSum(time, 4) + self.terminalReward(state)
 
-    def setupTMatrix(self, time):
+    def setupTDPMatrix(self, time):
         # determine age
         age = self.t0 + time / 2
         # subtract 1 if on last timestep so probabilities work out
@@ -118,10 +120,11 @@ class CancerPOMDP(object):
 
         # mortality rates given for 5 year intervals
         ageIndex5Year = (age - 40) / 5
+
         # incidence probabilities given for 10 year intervals
         ageIndex10Year = (age - 40) / 10
 
-        transMatrix = TMatrix
+        transMatrix = TDPMatrix
         # set healthy -> death prob
         transMatrix[0][5] = death_probs[ageIndex5Year]
 
@@ -145,7 +148,9 @@ class CancerPOMDP(object):
             Return probability of transitioning from state to newState at
             time t
         '''
-        return self.setupTMatrix(time)[state][newState]
+        if self.tdp: 
+            return self.setupTDPMatrix(time)[state][newState]
+        return TMatrix[state][newState]
 
     def obsProb(self, time, state, obs):
         '''
