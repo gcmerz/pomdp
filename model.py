@@ -1,4 +1,4 @@
-from stats import SDStats, MStats, TMatrix, death_probs 
+from stats import SDStats, MStats, TMatrix, death_probs, healthy_inv_probs
 import numpy as np
 from modelConstants import W, M, MNEG, MPOS, SDNEG, SDPOS
 
@@ -77,16 +77,21 @@ class CancerPOMDP(object):
             or invasive cancer.
         '''
 
-        def lumpSum(t, decayRate, laterDecay):
+        def lumpSum(t, state):
             numPeople = 100000
 
             initPeople = numPeople
             yearsTotal = 0
             for i in xrange(t, self.tmax):
-                # update decay rate after first 5 years to reflect changes
-                # in probability of death
-                if i > 10:
-                    decayRate = laterDecay
+                # probability of dying
+                decayRate = self.transProb(t, 0, 5)
+                if state == 4:
+                    # update decay rate after first 5 years to reflect changes
+                    # in probability of death
+                    if i - t > 10:
+                        decayRate *= 1.2
+                    else:
+                        decayRate *= 1.5
                 numDied = decayRate * numPeople
                 # find number of people that lived the full 6 mos
                 yearsTotal += .5 * (numPeople - numDied) + .25 * (numDied)
@@ -95,22 +100,22 @@ class CancerPOMDP(object):
             return yearsTotal / float(initPeople)
 
         if state == 0:
-            return lumpSum(time, .004, .004) + self.terminalReward(state)
+            return lumpSum(time, 0) + self.terminalReward(state)
         if state == 3:
-        # death rate for in-situ cancer same as cancer-free
-            return lumpSum(time, .004, .004) + self.terminalReward(state)
+            # death rate for in-situ cancer same as cancer-free
+            return lumpSum(time, 3) + self.terminalReward(state)
         # once you have survived five years with invasive cancer,
         # your probability of dying decreases
         if state == 4:
-            return lumpSum(time, .008, .006) + self.terminalReward(state)
+            return lumpSum(time, 4) + self.terminalReward(state)
 
     def setupTMatrix(self, time):
-        transmatrix = TMatrix
         # determine age
-        age = self.t0 + 2 * time
+        age = self.t0 + time / 2
         # subtract 1 if on last timestep so probabilities work out
         if age == 100:
             age -= 1
+
         # mortality rates given for 5 year intervals
         ageIndex5Year = (age - 40) / 5
         # incidence probabilities given for 10 year intervals
@@ -124,13 +129,14 @@ class CancerPOMDP(object):
         transMatrix[1][5] = death_probs[ageIndex5Year]
 
         # set healthy -> invasive prob
-        transmatrix[0][3] = death_probs[ageIndex10Year]
+        transMatrix[0][2] = healthy_inv_probs[ageIndex10Year]
 
         # set healthy -> healthy prob
-        transMatrix[0][0] = 1 - transMatrix[0][1] - transMatrix[0][2] - transMatrix[0][5]
+        transMatrix[0][0] = 1 - (transMatrix[0][1] +
+                                 transMatrix[0][2] + transMatrix[0][5])
 
         # set in-situ -> in-situ prob
-        transMatrix[1][1] = 1 - transMatrix[1][2] - transMatrix[1][5]
+        transMatrix[1][1] = 1 - (transMatrix[1][2] + transMatrix[1][5])
 
         return transMatrix
 
@@ -139,7 +145,7 @@ class CancerPOMDP(object):
             Return probability of transitioning from state to newState at
             time t
         '''
-        return setupTMatrix[state][newState]
+        return self.setupTMatrix(time)[state][newState]
 
     def obsProb(self, time, state, obs):
         '''
