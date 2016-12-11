@@ -1,5 +1,4 @@
-from stats import SDStats, MStats, TDPMatrix, death_probs, healthy_inv_probs, 
-TMatrix
+from stats import SDStats, MStats, TDPMatrix, death_probs, healthy_inv_probs, TMatrix
 import numpy as np
 from modelConstants import W, M, MNEG, MPOS, SDNEG, SDPOS
 

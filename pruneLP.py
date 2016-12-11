@@ -5,9 +5,10 @@ import numpy as np
 
 # LP Solvers
 import pulp
-from cvxopt.modeling import variable, op, dot
-from cvxopt import matrix
-import cvxopt
+
+# from cvxopt.modeling import variable, op, dot
+# from cvxopt import matrix
+# import cvxopt
 
 M = 10**6
 
