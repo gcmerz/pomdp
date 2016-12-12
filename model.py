@@ -187,9 +187,9 @@ class CancerPOMDP(object):
             return np.array([self.transProb(time, 0, newState) for newState in self.SPO])
 
         tauS = lambda newState: sum(
-            [b[s] * self.obsProb(time, s, obs) * self.transProb(time, newState, s)
+            [b[s] * self.obsProb(time, s, obs) * self.transProb(time, s, newState)
              for s in self.SPO])
 
         tau = np.array([tauS(newState) for newState in self.SPO])
         # return normalized tau
-        return tau / np.sum(tau)
+        return 1.0*tau / np.sum(tau)
