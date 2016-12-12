@@ -8,7 +8,7 @@ SDStats = {
     "spec": 0.92
 }
 
-# Sensitivity and specificity statistics for Mammography
+# Sensitivity and specificity statistics for mammography
 MStats = {
     # Age group 40-49
     0: {
@@ -37,24 +37,25 @@ MStats = {
     }
 }
 
-# Transition Probabilities
-# matrix structure:
-#               healthy, in-situ, invasive, post-in-situ, post-invasive, death
-# healthy
-# in-situ
-# invasive
-# post-in-situ
-# post-invasive
-# death
+''' Transition Probabilities
+Matrix Structure:
+                healthy, in-situ, invasive, post-in-situ, post-invasive, death
+healthy
+in-situ
+invasive
+post-in-situ
+post-invasive
+death
 
-# Healthy -> in-situ: same for each (.001)
-# In-situ -> invasive: same for each (.58)
-# Invasive -> death: same for each (.1)
-# Invasive -> invasive: same for each (1 - .1 = .9)
-# Healthy -> healthy: 1 - the rest in row
-# In-situ -> in-situ: 1 - the rest in row
+Probabilities:
+Healthy -> in-situ: same for each (.001)
+In-situ -> invasive: same for each (.58)
+Invasive -> death: same for each (.1)
+Invasive -> invasive: same for each (1 - .1 = .9)
+Healthy -> healthy: 1 - the rest in row
+In-situ -> in-situ: 1 - the rest in row'''
 
-# -1's denote probabilities that are age-specific
+# -1's in TDPMatrix denote probabilities that are age-specific
 
 TDPMatrix = [
     [-1, .001, -1, 0, 0, -1],

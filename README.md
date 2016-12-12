@@ -20,6 +20,6 @@ alpha: Directory containing pickle files of alpha vectors over 20, 40, and 80 ti
 
 ampl: Directory containing code used for the CPLEX LP solver.
 
-requirements.txt: run "pip install -r requirements.txt" before attempting to run the project.
+requirements.txt: Run "pip install -r requirements.txt" before attempting to run the project.
 
 POMDPs for Personalized Mammography Screening.ipynb: IPython notebook to walk through the project.

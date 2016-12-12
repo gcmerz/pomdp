@@ -1,6 +1,5 @@
 '''
-	Attempt at approximate PBVI solver 
-	NOTE: DOES NOT WORK 
+	Attempt at approximate PBVI solver (unfinished)
 	Todo: work on time dependence 
 '''
 import itertools
@@ -40,9 +39,8 @@ class PerseusSolve(CancerPOMDP):
 	def collectBeliefs(self, totalBeliefs): 
 	'''
 		run "trials of exploration" in belief space 
-		sample action / exploration and add it to 
-		our set of beliefs until we hit the 
-		number of totalBeliefs we want 
+		sample action / exploration and add it to our set of beliefs until we
+		hit the number of totalBeliefs we want 
 	'''
 		return 
 
@@ -65,8 +63,8 @@ class PerseusSolve(CancerPOMDP):
 
 	def computeValueFunc(self, numIter):
 		V = self.V 
-		# ask alexander about set vs. list here 
-		# and likelihood of repeated alpha vectors / belief states
+		# q: set vs. list
+		# q: likelihood of repeated alpha vectors / belief states
 		for _ in numIter:  
 			B_new = self.B 
 				V_new = []
