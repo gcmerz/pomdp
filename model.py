@@ -181,15 +181,15 @@ class CancerPOMDP(object):
         '''
             Update belief state given observation and transition probability
         '''
-
-        # if false positive mammography, then know that you are cancer free
-        if obs == MPOS:
-            return np.array([self.transProb(time, 0, newState) for newState in self.SPO])
-
         tauS = lambda newState: sum(
             [b[s] * self.obsProb(time, s, obs) * self.transProb(time, s, newState)
              for s in self.SPO])
 
-        tau = np.array([tauS(newState) for newState in self.SPO])
+        # if false positive mammography, then know that you are cancer free
+        if obs == MPOS:
+            tau = np.array([self.transProb(time, 0, newState) for newState in self.SPO])
+        else:
+            tau = np.array([tauS(newState) for newState in self.SPO])
+
         # return normalized tau
         return 1.0*tau / np.sum(tau)
