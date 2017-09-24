@@ -5,6 +5,8 @@ Model based on http://pubsonline.informs.org.ezp-prod1.hul.harvard.edu/doi/suppl
 
 Directory contents:
 
+LYDIA WAS HERE
+
 model.py: Structure and methods for the POMDP model.
 
 modelConstants.py: Constants used for actions and observations in the POMDP model.
